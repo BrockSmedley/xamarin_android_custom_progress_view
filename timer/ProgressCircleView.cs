@@ -15,12 +15,17 @@ using Android.Widget;
 using Android.Util;
 
 namespace timer {
-	class ProgressCircleView : View, ValueAnimator.IAnimatorUpdateListener {
+	class ProgressCircleView : View, ValueAnimator.IAnimatorUpdateListener, ValueAnimator.IAnimatorListener {
 		Context _context;
-		Canvas _canvas;
 		ValueAnimator animation;
 		float progressPercentage, intervalPercentage, additionalPercentage;
 		int updates = 0;
+
+		float startStatic;
+		float sweepStatic;
+
+		float startDynamic;
+		float sweepDynamic;
 
 		public Paint ProgressPaint { get; set; }
 
@@ -41,7 +46,7 @@ namespace timer {
 			this._context = context;
 
 			ProgressPaint = new Paint();
-			ProgressPaint.Color = Color.Red;
+			ProgressPaint.Color = Color.Green;
 
 			ProgressPaint.AntiAlias = true;
 			ProgressPaint.SetStyle(Paint.Style.Stroke);
@@ -50,14 +55,15 @@ namespace timer {
 			animation = ValueAnimator.OfInt(0, 100);//"animate" this value from 0-100
 			animation.SetDuration(1000);
 			animation.AddUpdateListener(this);
+			animation.AddListener(this);
 			animation.SetInterpolator(new DecelerateInterpolator());
+			animation.RepeatMode = ValueAnimatorRepeatMode.Restart;
 
 			progressPercentage = 0;
 			updates = 0;
 		}
 
 		protected override void OnDraw(Android.Graphics.Canvas canvas) {
-			base.OnDraw(canvas);
 			DrawArc(canvas);
 		}
 
@@ -106,6 +112,7 @@ namespace timer {
 			SetMeasuredDimension(width, height);
 		}
 
+		#region animation overrides
 		public void OnAnimationUpdate(ValueAnimator animator) {
 			UpdateArc(((float)animator.AnimatedValue));
 
@@ -114,23 +121,43 @@ namespace timer {
 			Log.Debug("interval_OnAnimationUpdate", intervalPercentage.ToString());
 		}
 
+		public void OnAnimationStart(Animator animator) {
+
+		}
+
+		public void OnAnimationRepeat(Animator animator) {
+			updates++;
+		}
+
+		public void OnAnimationEnd(Animator animator) {
+			ResetAnimationView();
+		}
+
+		public void OnAnimationCancel(Animator animator) {
+
+		}
+		#endregion
+
 		void DrawArc(Canvas canvas) {
 			RectF oval = new RectF(10, 10, Width - 10, Height - 10);
 
-			float startStatic = -90f;
-			float endStatic = (intervalPercentage/100f) * 360f * (updates-1);
+			startStatic = -90f;
+			sweepStatic = (intervalPercentage/100f) * 360f * (updates-1);
 
-			float startDynamic = endStatic + startStatic;
-			float endDynamic = ((additionalPercentage) / 100f) * (intervalPercentage / 100f) * 360f;
+			startDynamic = sweepStatic + startStatic;
+			sweepDynamic = ((additionalPercentage) / 100f) * (intervalPercentage / 100f) * 360f;
 
 			//runs instantly
-			canvas.DrawArc(oval, startStatic, endStatic, false, ProgressPaint);
+			if (updates > 1)
+				canvas.DrawArc(oval, startStatic, sweepStatic, false, ProgressPaint);
+			
 			//runs incrementally by animation
-			canvas.DrawArc(oval, startDynamic, endDynamic, false, ProgressPaint);
+			if (sweepDynamic < 360f*(intervalPercentage/100f) && updates >= 1)
+				canvas.DrawArc(oval, startDynamic, sweepDynamic, false, ProgressPaint);
 
-			Log.Debug("endStatic_DrawArc", endStatic.ToString());
+			Log.Debug("sweepStatic_DrawArc", sweepStatic.ToString());
 			Log.Debug("startDynamic_DrawArc", startDynamic.ToString());
-			Log.Debug("endDynamic_DrawArc", endDynamic.ToString());
+			Log.Debug("sweepDynamic_DrawArc", sweepDynamic.ToString());
 		}
 
 		public void UpdateArc(float additionalPercentage) {
@@ -142,17 +169,22 @@ namespace timer {
 		}
 
 		public void StartTimerAnimation(float durationInSeconds, float progressPercentage) {
+			animation.RepeatCount = (int)durationInSeconds;
+
 			this.progressPercentage = progressPercentage;
 			this.intervalPercentage = 100f / durationInSeconds;
 			additionalPercentage = 0;
+			startDynamic = startStatic;
 
 			animation.Start();
-
-			updates++;
 
 			Log.Debug("progressPercentage_StartTimerAnimation", progressPercentage.ToString());
 		}
 
-		
+		public void ResetAnimationView() {
+			updates = 0;
+			this.progressPercentage = 0;
+			additionalPercentage = 0;
+		}
 	}
 }

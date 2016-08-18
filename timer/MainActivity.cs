@@ -63,6 +63,8 @@ namespace timer {
 				countdown = new CountDown(timeInMillis, intervalInMillis);
 				countdown.Start();
 
+				progressCircle.StartTimerAnimation(timeInSecs, (float)progress);
+
 				//happens every interval in milliseconds
 				countdown.Tick += delegate {
 					int outputTime = timeLeftInMillis / 1000;
@@ -70,7 +72,9 @@ namespace timer {
 					timeLeftInMillis -= intervalInMillis;
 					
 					string outputText;
-					
+
+					Log.Debug("outputTime_runTimer", outputTime.ToString());
+
 					if (outputTime == 0) {
 						outputText = "Done";
 						timerStarted = false;
@@ -86,8 +90,6 @@ namespace timer {
 					}
 
 					textView_timer.SetText(outputText, TextView.BufferType.Normal);
-
-					progressCircle.StartTimerAnimation(timeInSecs, (float)progress);
 				};
 			}
 			else { //reset the timer
