@@ -15,10 +15,12 @@ using Android.Widget;
 using Android.Util;
 
 namespace timer {
-	class ProgressCircleView : View {
+	class ProgressCircleView : View, ValueAnimator.IAnimatorUpdateListener {
 		Context _context;
 		Canvas _canvas;
-		float progressPercentage, interval;
+		ValueAnimator animation;
+		float progressPercentage, intervalPercentage, additionalPercentage;
+		int updates = 0;
 
 		public Paint ProgressPaint { get; set; }
 
@@ -44,11 +46,18 @@ namespace timer {
 			ProgressPaint.AntiAlias = true;
 			ProgressPaint.SetStyle(Paint.Style.Stroke);
 			ProgressPaint.StrokeWidth = 10;
+
+			animation = ValueAnimator.OfInt(0, 100);//"animate" this value from 0-100
+			animation.SetDuration(1000);
+			animation.AddUpdateListener(this);
+			animation.SetInterpolator(new DecelerateInterpolator());
+
+			progressPercentage = 0;
+			updates = 0;
 		}
 
 		protected override void OnDraw(Android.Graphics.Canvas canvas) {
-			//base.OnDraw(canvas);
-
+			base.OnDraw(canvas);
 			DrawArc(canvas);
 		}
 
@@ -97,18 +106,53 @@ namespace timer {
 			SetMeasuredDimension(width, height);
 		}
 
+		public void OnAnimationUpdate(ValueAnimator animator) {
+			UpdateArc(((float)animator.AnimatedValue));
+
+			Log.Debug("progressPercentage_OnAnimationUpdate", progressPercentage.ToString());
+			Log.Debug("animator.AnimatedValue_OnAnimationUpdate", animator.AnimatedValue.ToString());
+			Log.Debug("interval_OnAnimationUpdate", intervalPercentage.ToString());
+		}
+
 		void DrawArc(Canvas canvas) {
-			float sweepAngle = progressPercentage * 360;
-
 			RectF oval = new RectF(10, 10, Width - 10, Height - 10);
-			canvas.DrawArc(oval, -90, sweepAngle, false, ProgressPaint);
+
+			float startStatic = -90f;
+			float endStatic = (intervalPercentage/100f) * 360f * (updates-1);
+
+			float startDynamic = endStatic + startStatic;
+			float endDynamic = ((additionalPercentage) / 100f) * (intervalPercentage / 100f) * 360f;
+
+			//runs instantly
+			canvas.DrawArc(oval, startStatic, endStatic, false, ProgressPaint);
+			//runs incrementally by animation
+			canvas.DrawArc(oval, startDynamic, endDynamic, false, ProgressPaint);
+
+			Log.Debug("endStatic_DrawArc", endStatic.ToString());
+			Log.Debug("startDynamic_DrawArc", startDynamic.ToString());
+			Log.Debug("endDynamic_DrawArc", endDynamic.ToString());
 		}
 
-		public void UpdateArc(float progressPercentage) {
+		public void UpdateArc(float additionalPercentage) {
+			this.additionalPercentage = additionalPercentage;
+
 			Invalidate();
-			
-			//animate this value
-			this.progressPercentage = progressPercentage;
+
+			Log.Debug("additionalPercentage_UpdateArc", additionalPercentage.ToString());
 		}
+
+		public void StartTimerAnimation(float durationInSeconds, float progressPercentage) {
+			this.progressPercentage = progressPercentage;
+			this.intervalPercentage = 100f / durationInSeconds;
+			additionalPercentage = 0;
+
+			animation.Start();
+
+			updates++;
+
+			Log.Debug("progressPercentage_StartTimerAnimation", progressPercentage.ToString());
+		}
+
+		
 	}
 }

@@ -7,6 +7,7 @@ using Android.Views;
 using Android.Widget;
 using Android.OS;
 using Android.Views.Animations;
+using Android.Util;
 using MyTimer;
 
 
@@ -16,9 +17,9 @@ namespace timer {
 		Button button_short, button_long;
 		TextView textView_timer;
 		int intervalInMillis = 1000; //1 sec
-		int timeInSecs, timeInMillis, timeLeftInMillis;
+		int timeInMillis, timeLeftInMillis;
 		bool timerStarted;
-		int progress;
+		float progress;
 
 		CountDown countdown;
 		ProgressCircleView progressCircle;
@@ -55,9 +56,6 @@ namespace timer {
 		private void runTimer(int timeInSecs) {
 			timeLeftInMillis = getTimeLeftInMillis(timeInSecs, intervalInMillis);//display this
 
-			//progressCircle.ProgressPaint = new Android.Graphics.Paint() { Color = Color.White };
-			
-
 			//start a new timer
 			if (!timerStarted) {
 				timeInMillis = getTimeInMillis(timeInSecs);
@@ -77,18 +75,19 @@ namespace timer {
 						outputText = "Done";
 						timerStarted = false;
 						countdown.Cancel();
-						progress = 100;
+						progress = 100f;
 					}
 					else {
 						outputText = outputTime.ToString();
 						timerStarted = true;
 
-						progress = (int)(100 * ((double)(timeInMillis - timeLeftInMillis) / (double)timeInMillis) - intervalInMillis/100);
+						progress = (100f * ((float)(timeInMillis - timeLeftInMillis) / (float)timeInMillis) - intervalInMillis/100f);
+						Log.Debug("runTimer_progress", progress.ToString());
 					}
 
 					textView_timer.SetText(outputText, TextView.BufferType.Normal);
 
-					progressCircle.UpdateArc((float)progress / 100);
+					progressCircle.StartTimerAnimation(timeInSecs, (float)progress);
 				};
 			}
 			else { //reset the timer
